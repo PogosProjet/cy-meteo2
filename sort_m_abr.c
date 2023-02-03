@@ -1,0 +1,146 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct tree {
+    
+    int elt ;   // Id station 
+    
+    float m ;  // station moisture
+    
+    // classics for ABR 
+    struct tree* pright ; 
+    struct tree* pleft ; 
+
+}treenode ; //treenode for moisture
+
+
+treenode* create_tree_m(int Id , float m){ //create treenode for mode 1
+    
+    treenode* newnode = malloc(sizeof(treenode));
+    if (newnode == NULL)
+    {
+        printf("Error allocating memory\n");
+        exit(4);
+    }
+    
+    newnode->elt = Id ; 
+    
+    newnode->m = m ; 
+    
+    newnode->pright = NULL ; 
+    newnode->pleft = NULL ; 
+    
+    return newnode ;
+}
+
+float maxf(float A , float B){  //return max of 2 floats //bibliothèque ?
+    if ( A >= B )
+    {
+        return A ; 
+    }
+    else
+    {
+        return B ;
+    }
+}
+
+treenode* insertion_ABR_m(treenode* ptree, int Id, float m){ //classic insertionABR fonction (+data)
+    
+    if (ptree==NULL)
+    {
+        return create_tree_m( Id, m);
+    }
+    
+    else if ( Id == ptree->elt ) // if same station, change data
+    {
+	ptree->m = maxf(ptree->m , m);
+	return ptree;      
+    }
+   
+    else if (m >= ptree->m )
+    {
+        ptree->pright = insertion_ABR_m(ptree->pright , Id , m);
+    }
+    
+    else if (m > ptree->m )
+    {
+        ptree->pleft = insertion_ABR_m(ptree->pleft , Id , m);
+    }
+    
+return ptree ;
+
+}
+
+int is_empty( treenode* ptree )
+	{
+		return(ptree==NULL);
+	}
+
+void process(treenode* ptree , FILE* pfile){
+if(!is_empty(ptree))
+	{ 	
+		fprintf(pfile , "%f;%05d\n" , ptree->m , ptree->elt );
+	}
+}
+
+void walktrough_data_tree_infix(treenode* ptree , FILE* pfile ){
+if(!is_empty(ptree))
+	{
+		walktrough_data_tree_infix(ptree->pright , pfile);
+		process(ptree , pfile);                            //reverse infix for decreasing moisture
+		walktrough_data_tree_infix(ptree->pleft , pfile);
+	}
+}
+ 
+int is_end_of_file ( FILE* pfile ){
+	
+	int E = 1 ; 
+	
+	if ( fgetc(pfile) != EOF )
+	{
+		E = 0 ; 
+	}
+	
+	fseek(pfile, -1 , SEEK_CUR);
+	
+	return E;
+}
+
+
+int main(int argc, char* argv[]){ 
+   if(argc != 3)
+	{
+	    printf("Error, wrong number of arguments in main sort_m_abr\n");
+	    exit(1);
+	}
+    
+    FILE* pfile = fopen( argv[1] , "r");
+    if (pfile==NULL)
+    {
+        printf("Error allocating memory when oppening input file in main sort_m_abr\n");
+		exit(1);
+	}
+	
+    FILE* sorted_pfile = fopen( argv[2] , "w");
+    if (sorted_pfile==NULL)
+    {
+        printf("Error allocating memory when oppening output file in main sort_m_abr\n");
+		exit(1);
+	}
+	
+	treenode* data_tree = NULL ;
+    int Id ;
+    float m ;
+    
+    while ( is_end_of_file(pfile) == 0 )
+    {
+		fscanf(pfile, "%d;%f", &Id , &m);
+		data_tree = insertion_ABR_m (data_tree, Id , m);
+	}
+	fclose(pfile);
+	
+	walktrough_data_tree_infix ( data_tree , sorted_pfile );
+	fclose(sorted_pfile);
+	
+	return 0 ; 
+}
